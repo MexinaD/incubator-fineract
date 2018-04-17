@@ -153,10 +153,23 @@ public class ContentRepositoryUtils {
                 name, fileSize, ContentRepository.MAX_FILE_UPLOAD_SIZE_IN_MB); }
     }
 
-    public static void validateClientImageNotEmpty(final String imageFileName) {
+    public static void validateImageNotEmpty(final String imageFileName) {
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         if (imageFileName == null) {
-            final StringBuilder validationErrorCode = new StringBuilder("validation.msg.clientImage.cannot.be.blank");
+            final StringBuilder validationErrorCode = new StringBuilder("validation.msg.Image.cannot.be.blank");
+            final StringBuilder defaultEnglishMessage = new StringBuilder("The parameter image cannot be blank.");
+            final ApiParameterError error = ApiParameterError.parameterError(validationErrorCode.toString(),
+                    defaultEnglishMessage.toString(), "image");
+            dataValidationErrors.add(error);
+            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
+                    dataValidationErrors);
+        }
+    }
+
+public static void validateOfficeImageNotEmpty(final String imageFileName) {
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        if (imageFileName == null) {
+            final StringBuilder validationErrorCode = new StringBuilder("validation.msg.officeImage.cannot.be.blank");
             final StringBuilder defaultEnglishMessage = new StringBuilder("The parameter image cannot be blank.");
             final ApiParameterError error = ApiParameterError.parameterError(validationErrorCode.toString(),
                     defaultEnglishMessage.toString(), "image");

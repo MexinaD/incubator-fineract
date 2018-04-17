@@ -43,9 +43,9 @@ public interface ContentRepository {
 
     public abstract FileData fetchFile(DocumentData documentData);
 
-    public abstract String saveImage(InputStream uploadedInputStream, Long resourceId, String imageName, Long fileSize);
+    public abstract String saveImage(InputStream uploadedInputStream, String resource, Long resourceId, String imageName, Long fileSize);
 
-    public abstract String saveImage(Base64EncodedImage base64EncodedImage, Long resourceId, String imageName);
+    public abstract String saveImage(Base64EncodedImage base64EncodedImage, String resource, Long resourceId, String imageName);
 
     public abstract void deleteImage(final Long resourceId, final String location);
 

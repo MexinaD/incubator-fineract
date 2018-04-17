@@ -26,12 +26,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ImageWritePlatformService {
 
-    @PreAuthorize(value = "hasAnyRole('ALL_FUNCTIONS', 'CREATE_CLIENTIMAGE','CREATE_STAFFIMAGE')")
+    @PreAuthorize(value = "hasAnyRole('ALL_FUNCTIONS', 'CREATE_CLIENTIMAGE','CREATE_STAFFIMAGE', 'CREATE_OFFICEIMAGE')")
     CommandProcessingResult saveOrUpdateImage(String entityName, Long entityId, String imageName, InputStream inputStream, Long fileSize);
 
-    @PreAuthorize(value = "hasAnyRole('ALL_FUNCTIONS', 'CREATE_CLIENTIMAGE','CREATE_STAFFIMAGE')")
+    @PreAuthorize(value = "hasAnyRole('ALL_FUNCTIONS', 'CREATE_CLIENTIMAGE','CREATE_STAFFIMAGE', 'CREATE_OFFICEIMAGE')")
     CommandProcessingResult saveOrUpdateImage(String entityName, Long entityId, Base64EncodedImage encodedImage);
 
-    @PreAuthorize(value = "hasAnyRole('ALL_FUNCTIONS', 'DELETE_CLIENTIMAGE','DELETE_STAFFIMAGE')")
+    @PreAuthorize(value = "hasAnyRole('ALL_FUNCTIONS', 'DELETE_CLIENTIMAGE','DELETE_STAFFIMAGE','DELETE_OFFICEIMAGE')")
     CommandProcessingResult deleteImage(String entityName, Long entityId);
 }

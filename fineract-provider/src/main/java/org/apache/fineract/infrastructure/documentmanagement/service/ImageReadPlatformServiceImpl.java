@@ -31,7 +31,10 @@ import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
+import org.apache.fineract.organisation.office.domain.Office;
+import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.portfolio.client.exception.ImageNotFoundException;
+//import org.apache.fineract.organisation.office.exception.ImageNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -45,14 +48,16 @@ public class ImageReadPlatformServiceImpl implements ImageReadPlatformService {
     private final ContentRepositoryFactory contentRepositoryFactory;
     private final ClientRepositoryWrapper clientRepositoryWrapper;
     private final StaffRepositoryWrapper staffRepositoryWrapper;
+    private final OfficeRepositoryWrapper officeRepositoryWrapper;
 
     @Autowired
     public ImageReadPlatformServiceImpl(final RoutingDataSource dataSource, final ContentRepositoryFactory documentStoreFactory,
-            final ClientRepositoryWrapper clientRepositoryWrapper, StaffRepositoryWrapper staffRepositoryWrapper) {
+            final ClientRepositoryWrapper clientRepositoryWrapper, StaffRepositoryWrapper staffRepositoryWrapper, OfficeRepositoryWrapper officeRepositoryWrapper) {
         this.staffRepositoryWrapper = staffRepositoryWrapper;
         this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.contentRepositoryFactory = documentStoreFactory;
         this.clientRepositoryWrapper = clientRepositoryWrapper;
+	this.officeRepositoryWrapper = officeRepositoryWrapper;
     }
 
     private static final class ImageMapper implements RowMapper<ImageData> {
@@ -69,6 +74,8 @@ public class ImageReadPlatformServiceImpl implements ImageReadPlatformService {
                 builder.append(" from m_image image , m_client client " + " where client.image_id = image.id and client.id=?");
             } else if (ENTITY_TYPE_FOR_IMAGES.STAFF.toString().equalsIgnoreCase(entityType)) {
                 builder.append("from m_image image , m_staff staff " + " where staff.image_id = image.id and staff.id=?");
+            } else if (ENTITY_TYPE_FOR_IMAGES.OFFICES.toString().equalsIgnoreCase(entityType)) {
+                builder.append(" from m_image image , m_office office " + " where office.image_id = image.id and office.id=?");
             }
             return builder.toString();
         }
@@ -94,6 +101,9 @@ public class ImageReadPlatformServiceImpl implements ImageReadPlatformService {
             } else if (ENTITY_TYPE_FOR_IMAGES.STAFF.toString().equalsIgnoreCase(entityType)) {
                 owner = this.staffRepositoryWrapper.findOneWithNotFoundDetection(entityId);
                 displayName = ((Staff) owner).displayName();
+            } else if (ENTITY_TYPE_FOR_IMAGES.OFFICES.toString().equalsIgnoreCase(entityType)) {
+                owner = this.officeRepositoryWrapper.findOneWithNotFoundDetection(entityId);
+                displayName = ((Office) owner).getName();
             }
             final ImageMapper imageMapper = new ImageMapper(displayName);
 
@@ -109,7 +119,8 @@ public class ImageReadPlatformServiceImpl implements ImageReadPlatformService {
 
             return result;
         } catch (final EmptyResultDataAccessException e) {
-            throw new ImageNotFoundException("clients", entityId);
+            throw new ImageNotFoundException(entityType, entityId);
+
         }
     }
 }

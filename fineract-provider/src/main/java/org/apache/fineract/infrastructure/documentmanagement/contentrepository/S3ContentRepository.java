@@ -84,9 +84,9 @@ public class S3ContentRepository implements ContentRepository {
     }
 
     @Override
-    public String saveImage(final InputStream toUploadInputStream, final Long resourceId, final String imageName, final Long fileSize) {
+    public String saveImage(final InputStream toUploadInputStream, final String resource, final Long resourceId, final String imageName, final Long fileSize) {
         ContentRepositoryUtils.validateFileSizeWithinPermissibleRange(fileSize, imageName);
-        final String uploadImageLocation = generateClientImageParentDirectory(resourceId);
+        final String uploadImageLocation = generateImageParentDirectory(resource, resourceId);
         final String fileLocation = uploadImageLocation + File.separator + imageName;
 
         uploadDocument(imageName, toUploadInputStream, fileLocation);
@@ -94,8 +94,8 @@ public class S3ContentRepository implements ContentRepository {
     }
 
     @Override
-    public String saveImage(final Base64EncodedImage base64EncodedImage, final Long resourceId, final String imageName) {
-        final String uploadImageLocation = generateClientImageParentDirectory(resourceId);
+    public String saveImage(final Base64EncodedImage base64EncodedImage, final String resource, final Long resourceId, final String imageName) {
+        final String uploadImageLocation = generateImageParentDirectory(resource, resourceId);
         final String fileLocation = uploadImageLocation + File.separator + imageName + base64EncodedImage.getFileExtension();
         final InputStream toUploadInputStream = new ByteArrayInputStream(Base64.decode(base64EncodedImage.getBase64EncodedString()));
 
@@ -164,8 +164,8 @@ public class S3ContentRepository implements ContentRepository {
                 + ContentRepositoryUtils.generateRandomString();
     }
 
-    private String generateClientImageParentDirectory(final Long resourceId) {
-        return "images" + File.separator + "clients" + File.separator + resourceId;
+    private String generateImageParentDirectory(final String resource, final Long resourceId) {
+        return "images" + File.separator + resource + File.separator + resourceId;
     }
 
     private void deleteObjectFromS3(final String location) {

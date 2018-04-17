@@ -30,6 +30,7 @@ import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
@@ -38,6 +39,7 @@ import javax.persistence.UniqueConstraint;
 import org.apache.commons.lang.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+import org.apache.fineract.infrastructure.documentmanagement.domain.Image;
 import org.apache.fineract.organisation.office.exception.CannotUpdateOfficeWithParentOfficeSameAsSelf;
 import org.apache.fineract.organisation.office.exception.RootOfficeParentCannotBeUpdated;
 import org.joda.time.LocalDate;
@@ -67,6 +69,10 @@ public class Office extends AbstractPersistableCustom<Long> {
 
     @Column(name = "external_id", length = 100)
     private String externalId;
+
+    @OneToOne(optional = true)
+    @JoinColumn(name = "image_id", nullable = true)
+    private Image image;
 
     public static Office headOffice(final String name, final LocalDate openingDate, final String externalId) {
         return new Office(null, name, openingDate, externalId);
@@ -245,5 +251,12 @@ public class Office extends AbstractPersistableCustom<Long> {
     
     public void loadLazyCollections() {
         this.children.size() ;
+    }
+    public void setImage(Image image) {
+        this.image = image;
+    }
+
+    public Image getImage() {
+        return this.image;
     }
 }
