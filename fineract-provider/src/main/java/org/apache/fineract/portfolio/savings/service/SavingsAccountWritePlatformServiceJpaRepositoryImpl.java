@@ -113,6 +113,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final AppUserRepositoryWrapper appuserRepository;
     private final StandingInstructionRepository standingInstructionRepository;
     private final BusinessEventNotifierService businessEventNotifierService;
+    private final SavingsAccountCharge savingsAccountCharge;
 
     @Autowired
     public SavingsAccountWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -134,7 +135,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
             final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
             final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService,
             final AppUserRepositoryWrapper appuserRepository, final StandingInstructionRepository standingInstructionRepository,
-            final BusinessEventNotifierService businessEventNotifierService) {
+            final BusinessEventNotifierService businessEventNotifierService, final SavingsAccountCharge savingsAccountCharge) {
         this.context = context;
         this.savingAccountRepositoryWrapper = savingAccountRepositoryWrapper;
         this.savingsAccountTransactionRepository = savingsAccountTransactionRepository;
@@ -160,6 +161,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         this.appuserRepository = appuserRepository;
         this.standingInstructionRepository = standingInstructionRepository;
         this.businessEventNotifierService = businessEventNotifierService;
+	this.savingsAccountCharge = savingsAccountCharge;
     }
 
     @Transactional
@@ -297,6 +299,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final boolean isApplyWithdrawFee = true;
         final boolean isInterestTransfer = false;
         final boolean isWithdrawBalance = false;
+	final boolean isApplyClosureFee = false;
         final SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
                 isRegularTransaction, isApplyWithdrawFee, isInterestTransfer, isWithdrawBalance);
         final SavingsAccountTransaction withdrawal = this.savingsAccountDomainService.handleWithdrawal(account, fmt, transactionDate,
@@ -669,8 +672,19 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final Map<String, Object> changes = new LinkedHashMap<>();
 
         if (isWithdrawBalance && account.getSummary().getAccountBalance(account.getCurrency()).isGreaterThanZero()) {
+	   ///To be continued
+              Collection<SavingsAccountCharge> charges = account.charges();
+              for( SavingsAccountCharge charge: charges){
+                   if(charge.isSavingsClosure){
+                      }
+                }
 
-            final BigDecimal transactionAmount = account.getSummary().getAccountBalance();
+            final boolean applyClosureFee = savingsAccountCharge.isSavingsClosure();
+	    BigDecimal transactionAmount = account.getSummary().getAccountBalance();
+	   if (applyClosureFee){
+	    final BigDecimal balance = account.getSummary().getAccountBalance();
+            transactionAmount = balance.subtract(savingsAccountCharge.updateClosureFeeAmount(balance));
+	    }
 
             final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
 
@@ -678,6 +692,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
             final boolean isRegularTransaction = true;
             final boolean isApplyWithdrawFee = false;
             final boolean isInterestTransfer = false;
+	    final boolean isApplyClosureFee = true;
             final SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
                     isRegularTransaction, isApplyWithdrawFee, isInterestTransfer, isWithdrawBalance);
 
@@ -685,8 +700,17 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     transactionBooleanValues);
 
         }
+        final LocalDate transactionDate = command.localDateValueOfParameterNamed(SavingsApiConstants.transactionDateParamName);
+        final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed(SavingsApiConstants.transactionAmountParamName);
+        final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
+	Integer accountType = null;
+	Long transactionId = null;
+        final SavingsAccountTransaction savingsAccountTransaction = this.savingsAccountTransactionRepository
+                .findOneByIdAndSavingsAccountId(transactionId, savingsId);
 
-        final Map<String, Object> accountChanges = account.close(user, command, DateUtils.getLocalDateOfTenant());
+        final SavingsAccountTransactionDTO transactionDTO = new SavingsAccountTransactionDTO(fmt, transactionDate, transactionAmount,
+                paymentDetail, savingsAccountTransaction.createdDate(), user, accountType);
+        final Map<String, Object> accountChanges = account.close(user, command, DateUtils.getLocalDateOfTenant(), transactionDTO, true);
         changes.putAll(accountChanges);
         if (!changes.isEmpty()) {
             this.savingAccountRepositoryWrapper.save(account);

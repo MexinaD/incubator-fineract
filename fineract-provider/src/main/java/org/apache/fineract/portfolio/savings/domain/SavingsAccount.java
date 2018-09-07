@@ -2189,7 +2189,7 @@ public class SavingsAccount extends AbstractPersistableCustom<Long> {
         }
     }
 
-    public Map<String, Object> close(final AppUser currentUser, final JsonCommand command, final LocalDate tenantsTodayDate) {
+    public Map<String, Object> close(final AppUser currentUser, final JsonCommand command, final LocalDate tenantsTodayDate, final SavingsAccountTransactionDTO transactionDTO, final boolean applyClosureFee) {
 
         final Map<String, Object> actualChanges = new LinkedHashMap<>();
 
@@ -2226,6 +2226,16 @@ public class SavingsAccount extends AbstractPersistableCustom<Long> {
                 if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
             }
         }
+
+	//final boolean applyClosureFee = true;
+        if (applyClosureFee) {
+            // auto pay closure fee
+	//  final SavingsAccountTransactionDTO transactionDTO;
+            payClosureFee(transactionDTO.getTransactionAmount(), transactionDTO.getTransactionDate(), transactionDTO.getAppUser());
+        }
+	
+	//updateClosureFeeAmount(getAccountBalance());
+
         if (getAccountBalance().doubleValue() != 0) {
             baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("results.in.balance.not.zero");
             if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }
@@ -2245,6 +2255,15 @@ public class SavingsAccount extends AbstractPersistableCustom<Long> {
         this.closedBy = currentUser;
 
         return actualChanges;
+    }
+
+	private void payClosureFee(final BigDecimal transactionAmount, final LocalDate transactionDate, final AppUser user){
+        for (SavingsAccountCharge charge : this.charges()) { 
+	      if (charge.isSavingsClosure() && charge.isActive()){
+                charge.updateClosureFeeAmount(getAccountBalance());
+                this.payCharge(charge, charge.getAmountOutstanding(this.getCurrency()), transactionDate, user);
+            }
+        }
     }
 
     protected void validateActivityNotBeforeClientOrGroupTransferDate(final SavingsEvent event, final LocalDate activityDate) {

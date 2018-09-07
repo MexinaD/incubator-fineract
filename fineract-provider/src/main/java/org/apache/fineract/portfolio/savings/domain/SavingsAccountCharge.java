@@ -221,11 +221,12 @@ public class SavingsAccountCharge extends AbstractPersistableCustom<Long> {
         }
 
         final BigDecimal transactionAmount = new BigDecimal(0);
+        final BigDecimal savingBalance = new BigDecimal(0);
 
         populateDerivedFields(transactionAmount, chargeAmount);
 
         if (this.isWithdrawalFee()
-        		|| this.isSavingsNoActivity()) {
+        		|| this.isSavingsNoActivity() || this.isSavingsClosure()) {
             this.amountOutstanding = BigDecimal.ZERO;
         }
 
@@ -267,6 +268,17 @@ public class SavingsAccountCharge extends AbstractPersistableCustom<Long> {
                 this.amountWrittenOff = null;
             break;
             case PERCENT_OF_AMOUNT:
+	      /*if (isSavingsClosure()){
+                this.percentage = chargeAmount;
+		final BigDecimal balanceAmount = transactionAmount.add(percentageOf(this.amountPercentageAppliedTo, this.percentage));
+                this.amountPercentageAppliedTo = balanceAmount;
+                this.amount = percentageOf(this.amountPercentageAppliedTo, this.percentage);
+                this.amountPaid = null;
+                this.amountOutstanding = calculateOutstanding();
+                this.amountWaived = null;
+                this.amountWrittenOff = null;
+		}
+	      else {*/
                 this.percentage = chargeAmount;
                 this.amountPercentageAppliedTo = transactionAmount;
                 this.amount = percentageOf(this.amountPercentageAppliedTo, this.percentage);
@@ -274,6 +286,7 @@ public class SavingsAccountCharge extends AbstractPersistableCustom<Long> {
                 this.amountOutstanding = calculateOutstanding();
                 this.amountWaived = null;
                 this.amountWrittenOff = null;
+		//}
             break;
             case PERCENT_OF_AMOUNT_AND_INTEREST:
                 this.percentage = null;
@@ -721,6 +734,17 @@ public class SavingsAccountCharge extends AbstractPersistableCustom<Long> {
         }
     }
 
+   public BigDecimal updateClosureFeeAmount(final BigDecimal savingBalance){
+        BigDecimal amountPaybaleFromBalance = BigDecimal.ZERO;
+        if (ChargeCalculationType.fromInt(this.chargeCalculation).isFlat()) {
+            amountPaybaleFromBalance = this.amount;
+        } else if (ChargeCalculationType.fromInt(this.chargeCalculation).isPercentageOfAmount()) {
+            amountPaybaleFromBalance = savingBalance.multiply(this.percentage).divide(BigDecimal.valueOf(100l));
+        }
+        this.amountOutstanding = amountPaybaleFromBalance;
+        return amountPaybaleFromBalance;
+}
+
     public LocalDate getNextDueDateFrom(final LocalDate startingDate) {
         LocalDate nextDueLocalDate = null;
         if (isAnnualFee() || isMonthlyFee()) {
@@ -844,6 +868,6 @@ public class SavingsAccountCharge extends AbstractPersistableCustom<Long> {
      * 
      */
     public boolean canOverriteSavingAccountRules() {
-        return !(this.isSavingsActivation() || this.isWithdrawalFee());
+        return !(this.isSavingsActivation() || this.isWithdrawalFee() || this.isSavingsClosure());
     }
 }

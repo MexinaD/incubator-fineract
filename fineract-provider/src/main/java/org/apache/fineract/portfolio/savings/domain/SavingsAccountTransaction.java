@@ -363,6 +363,9 @@ public final class SavingsAccountTransaction extends AbstractPersistableCustom<L
     public boolean isWithdrawalFee() {
         return SavingsAccountTransactionType.fromInt(this.typeOf).isWithdrawalFee();
     }
+    public boolean isClosureFee() {
+        return SavingsAccountTransactionType.fromInt(this.typeOf).isClosureFee();
+    }
 
     public boolean isAnnualFeeAndNotReversed() {
         return isAnnualFee() && isNotReversed();

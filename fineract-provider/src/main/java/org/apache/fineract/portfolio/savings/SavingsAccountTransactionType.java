@@ -35,6 +35,7 @@ public enum SavingsAccountTransactionType {
     WAIVE_CHARGES(6, "savingsAccountTransactionType.waiveCharge"), //
     PAY_CHARGE(7, "savingsAccountTransactionType.payCharge"), //
     DIVIDEND_PAYOUT(8, "savingsAccountTransactionType.dividendPayout"), //
+    CLOSURE_FEE(9, "savingsAccountTransactionType.closureFee"), //
     INITIATE_TRANSFER(12, "savingsAccountTransactionType.initiateTransfer"), //
     APPROVE_TRANSFER(13, "savingsAccountTransactionType.approveTransfer"), //
     WITHDRAW_TRANSFER(14, "savingsAccountTransactionType.withdrawTransfer"), //
@@ -90,6 +91,9 @@ public enum SavingsAccountTransactionType {
             break;
             case 8:
                 savingsAccountTransactionType = SavingsAccountTransactionType.DIVIDEND_PAYOUT;
+            break;
+            case 9:
+                savingsAccountTransactionType = SavingsAccountTransactionType.CLOSURE_FEE;
             break;
             case 12:
                 savingsAccountTransactionType = SavingsAccountTransactionType.INITIATE_TRANSFER;
@@ -147,6 +151,10 @@ public enum SavingsAccountTransactionType {
 
     public boolean isWithdrawalFee() {
         return this.value.equals(SavingsAccountTransactionType.WITHDRAWAL_FEE.getValue());
+    }
+
+    public boolean isClosureFee() {
+        return this.value.equals(SavingsAccountTransactionType.CLOSURE_FEE.getValue());
     }
 
     public boolean isAnnualFee() {
