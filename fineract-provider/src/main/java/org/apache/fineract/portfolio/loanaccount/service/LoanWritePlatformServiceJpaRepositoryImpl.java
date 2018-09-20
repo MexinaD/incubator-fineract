@@ -681,14 +681,17 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final AppUser currentUser = getAppUserIfPresent();
 
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
+	final Long loanIdToClose = loan.getTopupLoanDetails().getLoanIdToClose();
+	final Loan loanToClose = this.loanAssembler.assembleFrom(loanIdToClose);
         checkClientOrGroupActive(loan);
         this.businessEventNotifierService.notifyBusinessEventToBeExecuted(BUSINESS_EVENTS.LOAN_UNDO_DISBURSAL,
                 constructEntityMap(BUSINESS_ENTITY.LOAN, loan));
         removeLoanCycle(loan);
 
+
         final List<Long> existingTransactionIds = new ArrayList<>();
         final List<Long> existingReversedTransactionIds = new ArrayList<>();
-        //
+        
         final MonetaryCurrency currency = loan.getCurrency();
         final ApplicationCurrency applicationCurrency = this.applicationCurrencyRepository.findOneWithNotFoundDetection(currency);
 
@@ -696,12 +699,29 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         loan.setActualDisbursementDate(null);
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
 
+	final List<Long> closedLoanTransactionId = (findClosedLoanLastTransactionId(loanId));
+
         final Map<String, Object> changes = loan.undoDisbursal(scheduleGeneratorDTO, existingTransactionIds,
                 existingReversedTransactionIds, currentUser);
+
 
         if (!changes.isEmpty()) {
             saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
             this.accountTransfersWritePlatformService.reverseAllTransactions(loanId, PortfolioAccountType.LOAN);
+	    if (loan.isTopup()){
+	    this.accountTransfersWritePlatformService.reverseTransfersWithFromAccountTransactions(closedLoanTransactionId, PortfolioAccountType.LOAN);
+            loanToClose.setLoanStatus(LoanStatus.ACTIVE.getValue());
+            loanToClose.updateLoanSummarAndStatus();
+ 	/*if (changedTransactionDetail != null) {
+                    for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
+                        this.loanTransactionRepository.save(mapEntry.getValue());
+                        // update loan with references to the newly created
+                        // transactions
+                        loan.addLoanTransaction(mapEntry.getValue());
+                        this.accountTransfersWritePlatformService.updateLoanTransaction(mapEntry.getKey(), mapEntry.getValue());
+                    }
+                }*/
+	      }
             String noteText = null;
             if (command.hasParameter("note")) {
                 noteText = command.stringValueOfParameterNamed("note");
@@ -714,6 +734,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final Map<String, Object> accountingBridgeData = loan.deriveAccountingBridgeData(applicationCurrency.toData(),
                     existingTransactionIds, existingReversedTransactionIds, isAccountTransfer);
             this.journalEntryWritePlatformService.createJournalEntriesForLoan(accountingBridgeData);
+
+ 	if (loan.isTopup()){
+            final Map<String, Object> accountingBridgeDataForClosedLoan = loanToClose.deriveAccountingBridgeData
+		(applicationCurrency.toData(),
+                    closedLoanTransactionId, existingReversedTransactionIds, isAccountTransfer);
+            this.journalEntryWritePlatformService.createJournalEntriesForLoan(accountingBridgeDataForClosedLoan);
+		}
             this.businessEventNotifierService.notifyBusinessEventWasExecuted(BUSINESS_EVENTS.LOAN_UNDO_DISBURSAL,
                     constructEntityMap(BUSINESS_ENTITY.LOAN, loan));
         }
@@ -728,6 +755,22 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 .with(changes) //
                 .build();
     }
+
+	//method to get Id of the last transaction of the closed loan
+    	public List<Long> findClosedLoanLastTransactionId(final Long loanId){
+        	final Loan loan = this.loanAssembler.assembleFrom(loanId);
+                final Long loanIdToClose = loan.getTopupLoanDetails().getLoanIdToClose();
+                final Loan loanToClose = this.loanAssembler.assembleFrom(loanIdToClose);
+                final List<LoanTransaction> transactions = loanToClose.getLoanTransactions();
+                final List<Long> closedLoanLastTransactionId = new ArrayList<>();
+
+          for (final LoanTransaction transaction : transactions) {
+            if (transaction.isRepayment() && transaction.isNonZero()) {
+               closedLoanLastTransactionId.add(transaction.getId());
+            }
+        }
+	 return closedLoanLastTransactionId;
+      }
 
     @Transactional
     @Override

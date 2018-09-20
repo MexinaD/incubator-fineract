@@ -121,6 +121,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanApplica
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleGenerator;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModel;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelPeriod;
+import org.apache.fineract.portfolio.loanaccount.service.LoanAssembler;
 import org.apache.fineract.portfolio.loanproduct.domain.AmortizationMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestCalculationPeriodMethod;
 import org.apache.fineract.portfolio.loanproduct.domain.InterestMethod;
@@ -391,6 +392,7 @@ public class Loan extends AbstractPersistableCustom<Long> {
 
     @OneToOne(cascade = CascadeType.ALL, mappedBy = "loan", optional = true, orphanRemoval = true, fetch=FetchType.EAGER)
     private LoanTopupDetails loanTopupDetails;
+
 
     public static Loan newIndividualLoanApplication(final String accountNo, final Client client, final Integer loanType,
             final LoanProduct loanProduct, final Fund fund, final Staff officer, final CodeValue loanPurpose,
@@ -2295,6 +2297,7 @@ public class Loan extends AbstractPersistableCustom<Long> {
         return ids;
     }
 
+
     public ChangedTransactionDetail disburse(final AppUser currentUser, final JsonCommand command, final Map<String, Object> actualChanges,
             final ScheduleGeneratorDTO scheduleGeneratorDTO, final PaymentDetail paymentDetail) {
 
@@ -2777,8 +2780,19 @@ public class Loan extends AbstractPersistableCustom<Long> {
         final LoanStatus currentStatus = LoanStatus.fromInt(this.loanStatus);
         final LoanStatus statusEnum = this.loanLifecycleStateMachine.transition(LoanEvent.LOAN_DISBURSAL_UNDO, currentStatus);
         validateActivityNotBeforeClientOrGroupTransferDate(LoanEvent.LOAN_DISBURSAL_UNDO, getDisbursementDate());
-        existingTransactionIds.addAll(findExistingTransactionIds());
+	//final Long loanId = getId();
+       /* if(this.isTopup){
+	existingTransactionIds.addAll(findClosedLoanLastTransactionId(loanId));
+	existingTransactionIds.addAll(findExistingTransactionIds());
+	
+	}
+	else {
+	existingTransactionIds.addAll(findExistingTransactionIds());
+        }*/
+	existingTransactionIds.addAll(findExistingTransactionIds());
+
         existingReversedTransactionIds.addAll(findExistingReversedTransactionIds());
+	
         if (!statusEnum.hasStateOf(currentStatus)) {
             this.loanStatus = statusEnum.getValue();
             actualChanges.put("status", LoanEnumerations.status(this.loanStatus));
@@ -2836,6 +2850,25 @@ public class Loan extends AbstractPersistableCustom<Long> {
         }
         this.loanTransactions.retainAll(retainTransactions);
     }
+	
+
+      /* //method to get Id of the last transaction of the closed loan
+    	public List<Long> findClosedLoanLastTransactionId(final Long loanId){
+        	//final Loan loan = this.loanAssembler.assembleFrom(loanId);
+
+                final Long loanIdToClose = getTopupLoanDetails().getLoanIdToClose();
+		final Loan loanToClose = LoanAssembler.assembleFrom(loanIdToClose);
+		final List<LoanTransaction> transactions = loanToClose.getLoanTransactions();
+                final List<Long> closedLoanLastTransactionId = new ArrayList<>();
+
+          for (final LoanTransaction transaction : transactions) {
+            if (transaction.isRepayment() && transaction.isNonZero()) {
+               closedLoanLastTransactionId.add(transaction.getId());
+            }
+        }
+	 return closedLoanLastTransactionId;
+      }*/
+
 
     private void updateLoanToPreDisbursalState() {
         this.actualDisbursementDate = null;
@@ -4815,12 +4848,12 @@ public class Loan extends AbstractPersistableCustom<Long> {
                             defaultUserMessage);
                     dataValidationErrors.add(error);
                 }
-                if(isOpen() && this.isTopup()){
+               /* if(isOpen() && this.isTopup()){
                     final String defaultUserMessage = "Loan Undo disbursal is not allowed on Topup Loans";
                     final ApiParameterError error = ApiParameterError.generalError("error.msg.loan.undo.disbursal.not.allowed.on.topup.loan",
                             defaultUserMessage);
                     dataValidationErrors.add(error);
-                }
+                }*/
             break;
             case LOAN_REPAYMENT_OR_WAIVER:
                 if (!isOpen()) {
